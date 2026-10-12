@@ -17,6 +17,7 @@ UNITS = {
     "nGear": "gear",
     "RPM": "rpm",
     "DRS": "code",
+    "SteeringInput": "%",
 }
 
 
@@ -58,12 +59,7 @@ def label_of(lap) -> str:
 
 def _smooth(values: np.ndarray, window: int = 5) -> np.ndarray:
     """Moving average with edge padding. Makes the track line streamlined."""
-    if values.size < window or window < 3:
-        return values
-    half = window // 2
-    padded = np.pad(values, half, mode="edge")
-    kernel = np.ones(window, dtype=float) / window
-    return np.convolve(padded, kernel, mode="valid")
+    return normalize.moving_average(values, window)
 
 
 def _x_values(telemetry: pd.DataFrame, axis: str) -> np.ndarray:
@@ -75,6 +71,10 @@ def _x_values(telemetry: pd.DataFrame, axis: str) -> np.ndarray:
 
 
 def _channel_values(telemetry: pd.DataFrame, channel: str) -> np.ndarray:
+    if channel == "SteeringInput":
+        if not {"X", "Y"}.issubset(telemetry.columns):
+            raise ValueError("channel SteeringInput needs the X and Y positions")
+        return normalize.steering_input(telemetry["X"], telemetry["Y"])
     if channel not in telemetry.columns:
         raise ValueError(f"channel {channel} is not in the telemetry")
     return telemetry[channel].to_numpy(dtype=float)
@@ -154,6 +154,27 @@ def telemetry(
             "driver": str(lap["Driver"]),
             "lap": int(lap["LapNumber"]),
             "unit": UNITS.get(channel, ""),
+        }
+    )
+    return envelope
+
+
+def steering_input(
+    session, driver: str, lap_number: int | None = None, axis: str = "distance"
+) -> dict:
+    """Steering wheel input of one lap, estimated from the X and Y positions.
+
+    FastF1 has no steering angle channel. The input comes from the curvature
+    of the driven line. A tight curve gives a large input. The values run
+    from -100 (steering to the right) to +100 (steering to the left).
+    """
+    envelope = telemetry(session, driver, lap_number, "SteeringInput", axis)
+    envelope["meta"].update(
+        {
+            "channel": "Steering input",
+            "estimate": "from the X and Y positions",
+            "positive": "left",
+            "negative": "right",
         }
     )
     return envelope

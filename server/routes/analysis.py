@@ -36,6 +36,19 @@ def telemetry():
     )
 
 
+@bp.get("/steering-input")
+def steering_input():
+    session = _session(request.args["year"], request.args["round"], request.args["code"])
+    return jsonify(
+        analysis.steering_input(
+            session,
+            request.args["driver"],
+            request.args.get("lap", type=int),
+            request.args.get("axis", "distance"),
+        )
+    )
+
+
 @bp.post("/compare")
 def compare():
     body = request.get_json(force=True, silent=True) or {}

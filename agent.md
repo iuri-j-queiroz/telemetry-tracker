@@ -243,3 +243,15 @@ Register every change in section 9. Use this format:
 - **Change**: Built a screen for the instruction: "Compare Hamilton laps 8 and 13 throttle over the track distance"
 - **Checks**: AST validation, ruff check, server re-validation, smoke test passed
 - **Decisions/notes**: Screen title: Speed compare
+
+### [2026-10-12] builder — registered screen `speed_compare_5f8812a5` (function `speed_compare_7495591f`)
+- **Files**: server/registry/generated/speed_compare_7495591f.py, server/registry/generated/speed_compare_7495591f.json, builder/screens/speed_compare_5f8812a5.json
+- **Change**: Built a screen for the instruction: "Compare drivers full throttle with drops in acceleration, make a graph of the eletric engine gaps over a lap"
+- **Checks**: AST validation, ruff check, server re-validation, smoke test passed
+- **Decisions/notes**: Screen title: Speed compare
+
+### [2026-10-12] server, app, and builder — steering wheel input estimate from the X and Y positions
+- **Files**: server/normalize.py, server/analysis.py, server/routes/analysis.py, app/templates/index.html, builder/llm.py, builder/prompts.py, tests/test_normalize.py, tests/test_analysis.py, tests/test_builder.py
+- **Change**: Added the steering input method. FastF1 has no steering angle channel. The method estimates the steering wheel input from the X and Y positions. The heading change between two positions gives the curvature of the driven line. A tight curve gives a large input. The values run from -100 (steering to the right) to +100 (steering to the left). Added the route /api/analysis/steering-input. The telemetry and compare routes accept the channel SteeringInput. The app compare form has a "Steering input" channel. The builder mock builds steering screens in place of the old refusal. The builder prompt documents the estimate.
+- **Checks**: ruff check; ruff format --check; pytest (71 tests); live test on the cached Singapore 2026 Qualifying session: the new route, the compare channel, and the mock function through the registry sandbox
+- **Decisions/notes**: X and Y use the unit 1/10 m. The method smooths the positions with a moving average of 5 samples and smooths the curvature with a moving average of 5 samples. The sign follows the track map: positive is a counterclockwise turn (left), negative is a clockwise turn (right). The largest curvature in the lap sets the scale. Each lap uses its own scale, because the data has no absolute steering scale. The value is an estimate, not sensor data.

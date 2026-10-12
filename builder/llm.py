@@ -31,12 +31,10 @@ STINT_WORDS = ("stint", "tyre", "tire", "compound", "degradation", "pace")
 
 COMPARE_WORDS = ("compare", "speed", "versus", "vs", "delta", "gap", "difference", "telemetry")
 
+STEERING_WORDS = ("steering", "steering wheel", "steering input", "steering angle")
+
 # Requests that public FastF1 data cannot answer. Never fake this data.
 UNAVAILABLE_DATA = {
-    "steering": (
-        "Steering angle is not in the public FastF1 data. "
-        "The channels are Speed, Throttle, Brake, nGear, RPM, and DRS."
-    ),
     "tyre temp": (
         "Tyre temperature is not in the public FastF1 data. "
         "The channels are Speed, Throttle, Brake, nGear, RPM, and DRS."
@@ -60,9 +58,55 @@ UNAVAILABLE_DATA = {
 }
 
 MOCK_LIMITATION = (
-    "Mock mode builds only two example analyses: a driver speed compare and a stint pace chart. "
+    "Mock mode builds only three example analyses: a driver speed compare, a stint pace chart, "
+    "and a steering input trace. "
     "Set LLM_MOCK=0 and fill the LLM_* values in .env for free-form building."
 )
+
+MOCK_STEERING_CODE = """
+from fastf1 import plotting
+
+from server.normalize import normalize_length, steering_input
+
+
+def build(context):
+    session = context["session"]
+    params = context.get("params", {})
+    refs = params.get("refs", [])
+    streams = {}
+    colors = {}
+    for ref in refs:
+        laps = session.laps.pick_drivers(str(ref["driver"])).pick_laps(int(ref["lap"]))
+        lap = laps.pick_fastest()
+        if lap is None:
+            lap = laps.pick_fastest(only_by_time=True)
+        if lap is None:
+            raise ValueError(
+                "no lap data for " + str(ref["driver"]) + " lap " + str(ref["lap"])
+            )
+        telemetry = lap.get_telemetry()
+        if "Distance" not in telemetry.columns:
+            telemetry = telemetry.add_distance()
+        label = str(lap["Driver"]) + " L" + str(int(lap["LapNumber"]))
+        streams[label] = (
+            telemetry["Distance"].to_numpy(dtype=float),
+            steering_input(telemetry["X"], telemetry["Y"]),
+        )
+        try:
+            colors[label] = str(plotting.get_driver_color(str(lap["Driver"]), session=session))
+        except Exception:
+            colors[label] = "#ffffff"
+    result = normalize_length(
+        streams, "SteeringInput", step_m=float(params.get("step_m", 10))
+    )
+    for series in result["series"]:
+        series["color"] = colors.get(series["label"], "#ffffff")
+    result["meta"]["unit"] = "%"
+    result["meta"]["positive"] = "left"
+    result["meta"]["negative"] = "right"
+    result["meta"]["estimate"] = "from the X and Y positions"
+    return result
+"""
 
 MOCK_COMPARE_CODE = """
 from fastf1 import plotting
@@ -153,6 +197,14 @@ MOCK_COMPARE_PARAMS = {
 
 MOCK_STINT_PARAMS = {"drivers": ["auto1", "auto2"]}
 
+MOCK_STEERING_PARAMS = {
+    "refs": [
+        {"driver": "auto1", "lap": "fastest"},
+        {"driver": "auto2", "lap": "fastest"},
+    ],
+    "step_m": 10,
+}
+
 
 class LLMError(Exception):
     """The LLM did not answer with usable output."""
@@ -232,6 +284,16 @@ def mock_generate(messages: list[dict]) -> str:
     for term, reason in UNAVAILABLE_DATA.items():
         if _contains_word(text, term):
             return json.dumps({"action": "refuse", "reason": reason})
+    if _matches_any(text, STEERING_WORDS):
+        return json.dumps(
+            {
+                "action": "build",
+                "name": "steering_input",
+                "title": "Steering input",
+                "code": MOCK_STEERING_CODE,
+                "sample_params": MOCK_STEERING_PARAMS,
+            }
+        )
     if _matches_any(text, STINT_WORDS):
         return json.dumps(
             {

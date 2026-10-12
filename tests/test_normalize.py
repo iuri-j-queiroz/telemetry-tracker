@@ -72,3 +72,82 @@ def test_normalize_timespan_clips_to_the_start_and_end():
 
 def test_compute_delta_keeps_none():
     assert normalize.compute_delta([1.0, None, 3.0], [3.0, 4.0, None]) == [2.0, None, None]
+
+
+def _arc(radius: float, sweep: float, count: int):
+    """Points of one counterclockwise arc. X to the right, Y up."""
+    angles = np.linspace(0.0, sweep, count)
+    return radius * np.cos(angles), radius * np.sin(angles)
+
+
+def _smooth_curvature_path():
+    """One path: a loose arc, a smooth transition, then a tight arc.
+
+    The path comes from the heading integration of the curvature. The
+    transition makes the path continuous, like a real corner entry.
+    Counterclockwise, so every value is positive.
+    """
+    curvature = np.concatenate(
+        [
+            np.full(60, 1.0 / 100.0),
+            np.linspace(1.0 / 100.0, 1.0 / 20.0, 20),
+            np.full(60, 1.0 / 20.0),
+        ]
+    )
+    heading = np.concatenate([[0.0], np.cumsum(curvature)[:-1]])
+    return np.cumsum(np.cos(heading)), np.cumsum(np.sin(heading))
+
+
+def test_steering_input_is_zero_on_a_straight_line():
+    x = np.arange(0.0, 100.0, 1.0)
+    y = np.zeros_like(x)
+    values = normalize.steering_input(x, y)
+    assert values.shape == x.shape
+    assert np.allclose(values, 0.0)
+
+
+def test_steering_input_is_positive_for_a_left_turn():
+    x, y = _arc(30.0, np.pi, 40)
+    values = normalize.steering_input(x, y)
+    assert values[5:-5].min() > 99.0
+    assert values.min() >= 0.0
+    assert values.max() <= 100.0
+
+
+def test_steering_input_is_negative_for_a_right_turn():
+    x, y = _arc(30.0, -np.pi, 40)
+    values = normalize.steering_input(x, y)
+    assert values[5:-5].max() < -99.0
+    assert values.max() <= 0.0
+    assert values.min() >= -100.0
+
+
+def test_a_tighter_curve_gives_more_steering():
+    x, y = _smooth_curvature_path()
+    values = normalize.steering_input(x, y)
+    loose = np.abs(values[10:50])
+    tight = np.abs(values[90:130])
+    assert tight.mean() > loose.mean() * 3.0
+    assert tight.mean() > 90.0
+    assert loose.mean() < 30.0
+
+
+def test_steering_input_stays_in_range_and_keeps_the_shape():
+    x, y = _smooth_curvature_path()
+    values = normalize.steering_input(x, y)
+    assert values.shape == x.shape
+    assert values.min() >= -100.0
+    assert values.max() <= 100.0
+
+
+def test_steering_input_handles_short_and_broken_input():
+    assert normalize.steering_input([], []).tolist() == []
+    assert normalize.steering_input([1.0, 2.0], [1.0, 2.0]).tolist() == [0.0, 0.0]
+    assert normalize.steering_input([1.0, 2.0, 3.0], [1.0, 2.0]).tolist() == [0.0, 0.0, 0.0]
+
+
+def test_steering_input_keeps_a_duplicate_point_safe():
+    x = np.array([0.0, 0.0, 0.0, 10.0, 20.0])
+    y = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
+    values = normalize.steering_input(x, y)
+    assert np.all(np.isfinite(values))
