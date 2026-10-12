@@ -195,6 +195,13 @@ Register every change in section 9. Use this format:
 - **Checks**: ruff; pytest (52 tests)
 - **Decisions/notes**: Generated code and screen specs stay gitignored runtime artifacts. The first full commit holds the complete system. Use ./run.sh to start all services.
 
+### [2026-10-12] server and app — M5b F1TV access and gated live capture
+
+- **Files**: server/live.py, server/routes/live.py, server/session_manager.py, server/catalog.py, server/config.py, server/app.py, app/templates/index.html, app/static/css/style.css, app/static/js/live.js, app/static/js/main.js, tests/test_live.py, .gitignore, README.md, plan.md
+- **Change**: Added the F1TV access flow and gated live timing. The app asks for access before any capture. The server runs the FastF1 browser login with a local callback server, verifies the token, and captures the live stream with SignalRClient. Stop or a 5-minute silence timeout ends the capture and loads it as a normal session.
+- **Checks**: ruff; pytest (59 tests); live test of all gate endpoints without credentials
+- **Decisions/notes**: The token file is the FastF1 auth file. The callback server copies fastf1 internals (f1auth); the fastf1 version is pinned in uv.lock. ManagedSignalRClient adds a clean stop, because the fastf1 client has none. The live window check runs 15 minutes before a session until 3 hours after it. Capture must be validated during a live weekend with an F1TV subscription; it is not testable now.
+
 ### [2026-10-12] builder — registered screen `speed_compare_31158dde`
 - **Files**: server/registry/generated/speed_compare_31158dde.py, server/registry/generated/speed_compare_31158dde.json, builder/screens/speed_compare_31158dde.json
 - **Change**: Built a screen for the instruction: "Compare the speed of VER and HAM at Singapore"

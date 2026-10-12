@@ -11,6 +11,9 @@ load_dotenv(ROOT / ".env")
 CACHE_DIR = ROOT / "data" / "cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
+LIVE_DIR = ROOT / "data" / "live"
+LIVE_DIR.mkdir(parents=True, exist_ok=True)
+
 SERVER_PORT = int(os.getenv("SERVER_PORT", "5001"))
 BUILDER_TOKEN = os.getenv("BUILDER_TOKEN", "")
 

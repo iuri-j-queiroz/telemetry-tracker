@@ -1,6 +1,6 @@
 # plan.md — Telemetry Tracker Implementation Plan
 
-**Status**: M0–M4 complete. M5 pending (driver chat, F1TV access flow, gated live timing).
+**Status**: M0–M4 complete. M5b (F1TV access and gated live timing) complete. M5a (driver chat) and polish pending.
 **Repo**: `telemetry-tracker`
 **Companion documents**: `agent.md` (premises and Change Register)
 
@@ -151,13 +151,15 @@ Per instruction: prompt (allowed FastF1 patterns + envelope schema + few-shot ex
   - **Builder gate**: candidate generated functions must pass ruff before registration; failures become LLM retry feedback.
   - Optional pre-commit hook running ruff + ruff-format.
 
-## 10. F1TV gate for live timing (M5)
+## 10. F1TV gate for live timing (M5b, implemented)
 
-1. User selects **Live Data** → app calls `GET /api/live/status`.
-2. No credentials → app shows **F1TV access modal** (F1TV token input + instructions; F1TV Pro required per FastF1 live-timing auth). Token masked, never logged.
-3. Submit → `POST /api/live/auth`; server validates against FastF1's live-timing auth (pinned to installed fastf1 version) and only then starts capture via `fastf1.livetiming` (cache enabled).
-4. Auth failure or outside live window → structured error; app falls back to replay of latest session.
-5. Server refuses live endpoints without valid credentials; token in memory only, optional `.env` persist (`F1TV_TOKEN=`, gitignored) on user opt-in.
+1. User presses **Live Data** → the app opens the live modal and calls `GET /api/live/status`.
+2. No credentials → press **Authenticate**: `POST /api/live/auth/start` runs the FastF1 browser login. A local callback server listens on a free port. The user opens `https://f1login.fastf1.dev?port=<port>` and logs in with their F1TV account.
+3. The login page sends the token to the local server. The server verifies the JWT signature against the F1 JWKS and writes the FastF1 auth file. The token stays on this machine.
+4. `POST /api/live/capture/start` records the live stream with FastF1's SignalRClient. **Stop capture** ends the recording. A 5-minute silence timeout also ends it. The capture then loads as a normal session and the app polls the session status as usual.
+5. Without credentials the server refuses capture with 409. Failed or expired tokens show a clear reason in the modal.
+
+Limitations: a live capture needs an active session and an F1TV Access/Pro/Premium subscription. It is not testable outside a live weekend. The auth flow uses FastF1 internals; the version is pinned in `uv.lock`.
 
 ## 11. `agent.md` — premises + Change Register
 
@@ -183,7 +185,8 @@ All texts in this project follow ASD-STE100 Simplified Technical English: agent 
 | M2 | Normalization module (timespan + length) + seed analyses + registry/sandbox + ruff gate + tests | done |
 | M3 | App main screen fully interactive (all panels, compare, timeline, builder box wired; chat placeholder) | done |
 | M4 | Builder agent end-to-end (mock + LLM) + `/screens` pages + refusal behavior tests | done |
-| M5 | Driver chat functional; F1TV access flow + gated live timing; extra channels; polish | pending |
+| M5a | Driver chat functional | pending |
+| M5b | F1TV access flow + gated live timing | done (capture needs a live weekend to validate) |
 
 ## 14. Risks and mitigations
 

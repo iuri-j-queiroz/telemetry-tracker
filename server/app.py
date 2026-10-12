@@ -8,6 +8,7 @@ import logging
 from flask import Flask, jsonify
 from werkzeug.exceptions import HTTPException
 
+from server import live as live_service
 from server import registry
 from server.config import SERVER_PORT
 from server.routes import analysis, catalog, live
@@ -41,6 +42,10 @@ def create_app() -> Flask:
     @app.errorhandler(registry.RunError)
     def handle_run_error(error: registry.RunError):
         return jsonify({"error": str(error)}), 500
+
+    @app.errorhandler(live_service.LiveError)
+    def handle_live_error(error: live_service.LiveError):
+        return jsonify({"error": str(error)}), 409
 
     @app.errorhandler(HTTPException)
     def handle_http_error(error: HTTPException):

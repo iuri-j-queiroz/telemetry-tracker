@@ -105,9 +105,26 @@
   </div>
   <div id="builder-log" class="builder-log"></div>
 </section>
+
+<div id="live-modal" class="modal hidden">
+  <div class="modal-box">
+    <h2>Live data</h2>
+    <div id="live-modal-body">
+      <p class="hint">Checking F1TV access…</p>
+    </div>
+    <div class="modal-actions">
+      <button id="live-auth-start" type="button" class="hidden">Authenticate</button>
+      <a id="live-auth-link" class="ghost-button hidden" href="#" target="_blank" rel="noopener">Open F1TV login page</a>
+      <button id="live-capture" type="button" class="hidden">Start live capture</button>
+      <button id="live-stop" type="button" class="hidden">Stop capture</button>
+      <button id="live-close" type="button" class="ghost-button">Close</button>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/timeline.js') }}"></script>
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script src="{{ url_for('static', filename='js/live.js') }}"></script>
 {% endblock %}

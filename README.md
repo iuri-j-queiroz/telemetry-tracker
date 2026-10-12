@@ -44,5 +44,5 @@ uv run ruff format --check .
 ## Notes
 
 - The builder runs in mock mode by default (`LLM_MOCK=1` in `.env`). It returns known-good analyses, so no API key is necessary. Set `LLM_MOCK=0` and fill the `LLM_*` values to use a real OpenAI-compatible endpoint.
-- The app asks for F1TV access before it tries live timing. Live timing is planned for M5.
+- Live timing uses the FastF1 F1TV login: press "Live Data" in the app, authenticate in the browser, start the capture, and stop it when the session ends. The capture then loads as a normal session. F1TV Access, Pro, or Premium is necessary.
 - All texts in this project follow ASD-STE100 Simplified Technical English. See `agent.md`, section 6.

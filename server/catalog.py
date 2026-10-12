@@ -34,6 +34,38 @@ def _is_completed(moment) -> bool:
     return bool(moment <= pd.Timestamp.now(tz="UTC"))
 
 
+def live_window(now=None) -> dict | None:
+    """Return the session that is in progress now. None otherwise.
+
+    A session is live from 15 minutes before the start until 3 hours after it.
+    """
+    moment = now or dt.datetime.now(dt.UTC)
+    try:
+        schedule = _schedule(moment.year)
+    except Exception:  # noqa: BLE001 - the live check must never raise
+        return None
+    for _, row in schedule.iterrows():
+        if int(row["RoundNumber"]) == 0:
+            continue
+        for index in range(1, 6):
+            name = row.get(f"Session{index}")
+            start = row.get(f"Session{index}DateUtc")
+            if not isinstance(name, str) or pd.isna(start):
+                continue
+            if getattr(start, "tzinfo", None) is None:
+                start = start.tz_localize("UTC")
+            if start - dt.timedelta(minutes=15) <= moment <= start + dt.timedelta(hours=3):
+                return {
+                    "year": moment.year,
+                    "round": int(row["RoundNumber"]),
+                    "name": str(row["EventName"]),
+                    "session": name,
+                    "code": SESSION_CODES.get(name, name[:3].upper()),
+                    "start": start.isoformat(),
+                }
+    return None
+
+
 def list_events(years: int = 3) -> list[dict]:
     """Return the calendar of completed seasons, newest event first."""
     today = dt.datetime.now(dt.UTC)

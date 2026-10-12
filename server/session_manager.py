@@ -74,6 +74,33 @@ class SessionManager:
             raise SessionNotReadyError(key, entry["state"], entry["error"])
         return entry["session"]
 
+    def load_livedata(self, key: tuple, data_file) -> dict:
+        """Load one session from a live timing capture file."""
+        with self._lock:
+            self._entries[key] = {"state": STATE_LOADING, "error": None, "session": None}
+            thread = threading.Thread(
+                target=self._load_livedata, args=(key, str(data_file)), daemon=True
+            )
+            thread.start()
+            return self.status(key)
+
+    def _load_livedata(self, key: tuple, data_file: str) -> None:
+        year, round_number, code = key
+        LOG.info("loading live data %s for %s", data_file, key)
+        try:
+            from fastf1.livetiming.data import LiveTimingData
+
+            session = fastf1.get_session(year, round_number, code)
+            session.load(livedata=LiveTimingData(data_file))
+        except Exception as exc:  # noqa: BLE001 - report every load error to the UI
+            LOG.exception("live data load failed: %s", key)
+            with self._lock:
+                self._entries[key] = {"state": STATE_ERROR, "error": str(exc), "session": None}
+            return
+        with self._lock:
+            self._entries[key] = {"state": STATE_READY, "error": None, "session": session}
+        LOG.info("live data ready %s", key)
+
     def _load(self, key: tuple) -> None:
         year, round_number, code = key
         LOG.info("loading session %s", key)

@@ -383,13 +383,8 @@
 
   /* ------------------------------- Live -------------------------------- */
 
-  $("live-button").addEventListener("click", async () => {
-    try {
-      const status = await fetchJSON(server("live/status"));
-      setStatus(`${status.reason}`, "busy");
-    } catch (error) {
-      setStatus(`Cannot read the live status: ${error.message}`, "error");
-    }
+  $("live-button").addEventListener("click", () => {
+    if (window.TTLive) window.TTLive.open();
   });
 
   /* ------------------------------ Builder ------------------------------ */
@@ -452,6 +447,8 @@
     }
     $("builder-log").appendChild(message);
   }
+
+  window.TTApp = { state, prepareSession, setStatus };
 
   init();
 })();
