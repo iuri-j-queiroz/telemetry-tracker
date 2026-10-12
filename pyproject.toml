@@ -1,0 +1,41 @@
+[project]
+name = "telemetry-tracker"
+version = "0.1.0"
+description = "F1 telemetry review and analysis over FastF1 data"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastf1>=3.5",
+    "flask>=3.0",
+    "jsonschema>=4.23",
+    "matplotlib>=3.9",
+    "numpy>=1.26",
+    "openai>=1.40",
+    "pandas>=2.2",
+    "python-dotenv>=1.0",
+    "requests>=2.32",
+    "ruff>=0.11",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.3"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["server/registry/generated", "builder/screens"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]
+# Prompt text holds long JSON examples on purpose.
+"builder/prompts.py" = ["E501"]

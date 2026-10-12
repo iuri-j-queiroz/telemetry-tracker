@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="controls">
+  <div class="control">
+    <label for="event-input">Event</label>
+    <input id="event-input" list="event-list" placeholder="Type to search an event" autocomplete="off">
+    <datalist id="event-list"></datalist>
+  </div>
+  <div class="control">
+    <label for="session-select">Session</label>
+    <select id="session-select" disabled>
+      <option>Select an event first</option>
+    </select>
+  </div>
+  <button id="live-button" type="button" title="Live timing is planned for M5">Live Data</button>
+</section>
+
+<section class="layout">
+  <div class="center">
+    <div class="panel chart-panel">
+      <div class="panel-head">
+        <div class="tab-bar">
+          <button class="tab-button active" data-tab="trackmap">Track map</button>
+          <button class="tab-button" data-tab="comparison">Comparison</button>
+        </div>
+        <button id="trackmap-play" class="ghost-button" type="button" disabled>Play</button>
+      </div>
+      <div id="tab-trackmap" class="tab-page active">
+        <div id="trackmap-title" class="chart-title"></div>
+        <div id="trackmap" class="chart chart-tall">
+          <p class="hint">Select an event and a session.</p>
+        </div>
+      </div>
+      <div id="tab-comparison" class="tab-page">
+        <div id="results" class="results">
+          <p class="hint">Select two drivers and laps on the right, then press Compare.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="panel">
+      <h2>Drivers</h2>
+      <input id="driver-search" placeholder="Search a driver" autocomplete="off">
+      <div id="drivers" class="drivers">
+        <p class="hint">No session selected.</p>
+      </div>
+      <div class="compare-form">
+        <h3>Compare</h3>
+        <div class="row">
+          <select id="driver-a" aria-label="Driver A"></select>
+          <select id="lap-a" aria-label="Lap A"></select>
+        </div>
+        <div class="row">
+          <select id="driver-b" aria-label="Driver B"></select>
+          <select id="lap-b" aria-label="Lap B"></select>
+        </div>
+        <div class="row">
+          <select id="channel" aria-label="Channel">
+            <option>Speed</option>
+            <option>Throttle</option>
+            <option>Brake</option>
+            <option>nGear</option>
+            <option>RPM</option>
+            <option>DRS</option>
+          </select>
+          <select id="normalize" aria-label="Normalization">
+            <option value="length">By track length</option>
+            <option value="timespan">By time</option>
+          </select>
+        </div>
+        <button id="compare-button" disabled>Compare</button>
+      </div>
+    </div>
+
+    <div class="panel chart-panel">
+      <h2 id="mini-title">Telemetry</h2>
+      <div id="minitelemetry" class="chart chart-mini">
+        <p class="hint">Select a driver.</p>
+      </div>
+    </div>
+
+    <div class="panel chat-panel">
+      <h2>Driver chat</h2>
+      <div id="chat" class="chat">
+        <p class="hint">Planned for M5. Ask questions about the current session then.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="panel timeline-panel">
+  <h2 id="timeline-title">Timeline</h2>
+  <div id="timeline">
+    <p class="hint">Select a driver first.</p>
+  </div>
+</section>
+
+<section class="builder">
+  <label for="builder-input">Builder instructions</label>
+  <div class="builder-row">
+    <input id="builder-input" placeholder='Example: "Compare the speed of the two fastest drivers"'>
+    <button id="builder-button">Build</button>
+  </div>
+  <div id="builder-log" class="builder-log"></div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/timeline.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% endblock %}

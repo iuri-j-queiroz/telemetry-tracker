@@ -218,3 +218,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Telemetry Tracker runtime data
+data/cache/
+server/registry/generated/*
+!server/registry/generated/.gitkeep
+builder/screens/*
+!builder/screens/.gitkeep

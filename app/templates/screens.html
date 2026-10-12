@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Screens — Telemetry Tracker{% endblock %}
+{% block content %}
+<section class="screens">
+  <h1>Built screens</h1>
+  <p class="hint">Each screen comes from a builder instruction. Open a screen to see its analysis.</p>
+  <div id="screens-list">
+    <p class="hint">Loading…</p>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/screens.js') }}"></script>
+{% endblock %}

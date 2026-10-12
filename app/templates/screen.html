@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}{{ screen_id }} — Telemetry Tracker{% endblock %}
+{% block content %}
+<section class="screen">
+  <h1 id="screen-title">Loading…</h1>
+  <p id="screen-instruction" class="hint"></p>
+  <div id="screen-panels" class="screen-panels"></div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>window.SCREEN_ID = "{{ screen_id }}";</script>
+<script src="{{ url_for('static', filename='js/screen.js') }}"></script>
+{% endblock %}
