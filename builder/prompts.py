@@ -14,8 +14,9 @@ Rules for the code:
 - Allowed imports only: fastf1, numpy, pandas, matplotlib, server.normalize.
 - Use the session.laps and lap.get_telemetry() APIs. Call telemetry.add_distance() when the Distance column is missing.
 - A lap can have a lap time but no personal best, for example after a deleted lap. pick_fastest() can return None then. Use pick_fastest(only_by_time=True) for one lap by number.
-- Available telemetry channels only: Speed, Throttle, Brake, nGear, RPM, DRS, X, Y, Z, Status, Distance, RelativeDistance. Steering angle is NOT available.
-- If the instruction asks for data that is not available, refuse and name the missing data in the reason.
+- Available telemetry channels only: Speed, Throttle, Brake, nGear, RPM, DRS, X, Y, Z, Status, Distance, RelativeDistance. A steering angle sensor is NOT available.
+- To answer a steering request, estimate the steering wheel input with server.normalize.steering_input(x, y). The values run from -100 (steering to the right) to +100 (steering to the left). State in the meta that the value is an estimate from the X and Y positions.
+- If the instruction asks for other data that is not available, refuse and name the missing data in the reason.
 - When the instruction names drivers or lap numbers, use them in sample_params.
 - Use server.normalize helpers: normalize_length, normalize_timespan, envelope, values_list, compute_delta.
 - Keep all lines under 100 characters. Do not use *args or **kwargs. Do not assign attributes. Do not write files.

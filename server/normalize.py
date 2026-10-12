@@ -88,6 +88,60 @@ def resample(x, y, new_x) -> np.ndarray:
     return values
 
 
+def moving_average(values, window: int = 5) -> np.ndarray:
+    """Return the moving average of an array. The edge values hold the borders."""
+    array = np.asarray(values, dtype=float)
+    if window < 3 or array.size < window:
+        return array
+    half = window // 2
+    padded = np.pad(array, half, mode="edge")
+    kernel = np.ones(window, dtype=float) / window
+    return np.convolve(padded, kernel, mode="valid")
+
+
+def steering_input(
+    x,
+    y,
+    position_window: int = 5,
+    curvature_window: int = 5,
+) -> np.ndarray:
+    """Estimate the steering wheel input from the car X and Y positions.
+
+    FastF1 has no steering angle channel. The heading is the direction from
+    one position to the next position. The curvature is the change of the
+    heading for one unit of travel. A tight curve gives a large input.
+
+    Values run from -100 (steering to the right) to +100 (steering to the
+    left), as seen on the track map. The largest curvature in the data sets
+    the scale. The position data uses the unit 1/10 m.
+
+    Returns one value for each input point. The two ends hold the first and
+    the last middle value.
+    """
+    x_values = np.asarray(x, dtype=float)
+    y_values = np.asarray(y, dtype=float)
+    if x_values.size != y_values.size or x_values.size < 3:
+        return np.zeros(x_values.size)
+    smooth_x = moving_average(x_values, position_window)
+    smooth_y = moving_average(y_values, position_window)
+    dx = np.diff(smooth_x)
+    dy = np.diff(smooth_y)
+    heading = np.arctan2(dy, dx)
+    d_heading = np.diff(heading)
+    d_heading = (d_heading + np.pi) % (2 * np.pi) - np.pi
+    segment = np.hypot(dx, dy)
+    step = 0.5 * (segment[:-1] + segment[1:])
+    with np.errstate(divide="ignore", invalid="ignore"):
+        curvature = d_heading / np.where(step == 0.0, np.nan, step)
+    curvature = np.nan_to_num(curvature, nan=0.0, posinf=0.0, neginf=0.0)
+    curvature = moving_average(curvature, curvature_window)
+    curvature = np.pad(curvature, 1, mode="edge")
+    scale = float(np.nanmax(np.abs(curvature)))
+    if not np.isfinite(scale) or scale <= 0.0:
+        return np.zeros_like(curvature)
+    return np.clip(100.0 * curvature / scale, -100.0, 100.0)
+
+
 def _window(streams: dict, start: float | None, end: float | None) -> tuple[float, float]:
     firsts = [float(np.nanmin(x)) for x, _ in streams.values() if np.asarray(x).size]
     lasts = [float(np.nanmax(x)) for x, _ in streams.values() if np.asarray(x).size]

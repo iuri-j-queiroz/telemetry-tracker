@@ -17,7 +17,7 @@
     modeBarButtonsToRemove: ["lasso2d", "select2d"],
   };
 
-  /* Speed heatmap: green = slow, yellow = medium, red = fast. */
+  /* Speed heatmap for the driver dot: green = slow, yellow = medium, red = fast. */
   const SPEED_STOPS = [
     [0.0, [0, 200, 83]],
     [0.5, [255, 214, 0]],
@@ -52,6 +52,34 @@
     return `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
   }
 
+  /* ------------------ driver inputs (wheel and bars) -------------------- */
+
+  function channelValue(channels, name, index) {
+    const values = channels ? channels[name] : null;
+    if (!Array.isArray(values) || !values.length) return 0;
+    const value = values[Math.min(index, values.length - 1)];
+    return typeof value === "number" ? value : 0;
+  }
+
+  function setInputBar(name, value) {
+    const fill = document.getElementById(`${name}-fill`);
+    const bar = document.getElementById(`${name}-bar`);
+    if (!fill || !bar) return;
+    const percent = Math.max(0, Math.min(100, value || 0));
+    fill.style.height = `${percent}%`;
+    bar.classList.toggle("active", percent > 0);
+  }
+
+  function updateDriverInputs(channels, index) {
+    const wheel = document.getElementById("wheel-face");
+    if (!wheel || !channels) return;
+    const steering = channelValue(channels, "SteeringInput", index);
+    /* Positive steering is to the left, so the wheel turns counterclockwise. */
+    wheel.style.transform = `rotate(${(-steering / 100) * 150}deg)`;
+    setInputBar("throttle", channelValue(channels, "Throttle", index));
+    setInputBar("brake", channelValue(channels, "Brake", index));
+  }
+
   /* -------------------- track map play/pause animation ------------------ */
 
   function updatePlayButton() {
@@ -68,6 +96,30 @@
     updatePlayButton();
   }
 
+  function restyleTrackmapFrame() {
+    const state = animation;
+    const color = speedColor(state.speeds[state.index], state.vmin, state.vmax);
+    Plotly.restyle(
+      state.div,
+      {
+        x: [[state.x[state.index]]],
+        y: [[state.y[state.index]]],
+        "marker.color": [[color]],
+      },
+      [state.dotIndex]
+    );
+    if (state.othersIndices.length) {
+      const othersX = [];
+      const othersY = [];
+      for (const other of state.others) {
+        othersX.push([(other.x || [])[state.index]]);
+        othersY.push([(other.y || [])[state.index]]);
+      }
+      Plotly.restyle(state.div, { x: othersX, y: othersY }, state.othersIndices);
+    }
+    updateDriverInputs(state.channels, state.index);
+  }
+
   function tick(timestamp) {
     if (!animation || !animation.playing) return;
     if (animation.start === null) animation.start = timestamp;
@@ -79,11 +131,7 @@
     );
     if (index !== animation.index) {
       animation.index = index;
-      Plotly.restyle(
-        animation.div,
-        { x: [[animation.x[index]]], y: [[animation.y[index]]] },
-        [animation.traceIndex]
-      );
+      restyleTrackmapFrame();
     }
     animation.raf = requestAnimationFrame(tick);
   }
@@ -171,15 +219,18 @@
     const meta = env.meta || {};
     const x = series.x || [];
     const y = series.y || [];
-    const values = Array.isArray(series.values) ? series.values : [];
-    const finite = values.filter((value) => typeof value === "number" && isFinite(value));
+    const channels = meta.channels || {};
+    const speedChannel = meta.channel || "Speed";
+    const speeds = Array.isArray(channels[speedChannel]) ? channels[speedChannel] : series.values || [];
+    const finite = speeds.filter((value) => typeof value === "number" && isFinite(value));
     const vmin = typeof meta.vmin === "number" ? meta.vmin : finite.length ? Math.min(...finite) : 0;
     const vmax = typeof meta.vmax === "number" ? meta.vmax : finite.length ? Math.max(...finite) : 1;
-    const heatColors = x.map((_, index) => speedColor(values[index], vmin, vmax));
+    const others = Array.isArray(meta.others) ? meta.others : [];
     const unit = meta.unit ? ` (${meta.unit})` : "";
+
     const traces = [
       {
-        /* Grey background: the full track, built from interpolated points. */
+        /* The track keeps a grey color. */
         x,
         y,
         type: "scatter",
@@ -189,18 +240,7 @@
         showlegend: false,
       },
       {
-        /* Speed heatmap: the track line is 2 px wider than the driver dot. */
-        x,
-        y,
-        type: "scatter",
-        mode: "lines",
-        line: { color: heatColors, width: 8 },
-        customdata: values,
-        hovertemplate: `${meta.channel || "value"}: %{customdata}${unit}<extra></extra>`,
-        showlegend: false,
-      },
-      {
-        /* Invisible trace that carries the colorbar. */
+        /* Invisible trace that carries the speed colorbar for the dot. */
         x: x.length ? [x[0]] : [],
         y: y.length ? [y[0]] : [],
         type: "scatter",
@@ -220,17 +260,42 @@
         hoverinfo: "skip",
         showlegend: false,
       },
-      {
-        /* The driver dot. The play button moves it across the track. */
-        x: x.length ? [x[0]] : [],
-        y: y.length ? [y[0]] : [],
+    ];
+
+    /* The race layer: the other drivers in light grey with their own color. */
+    for (const other of others) {
+      traces.push({
+        x: [(other.x || [])[0]],
+        y: [(other.y || [])[0]],
         type: "scatter",
         mode: "markers",
-        marker: { size: 6, color: "#ffffff", line: { width: 2, color: "#101318" } },
+        marker: {
+          size: 6,
+          color: "#d5d9de",
+          line: { width: 1.5, color: other.color || "#888888" },
+        },
         hoverinfo: "skip",
         showlegend: false,
+      });
+    }
+
+    /* The selected driver dot: its color follows the speed. */
+    traces.push({
+      x: x.length ? [x[0]] : [],
+      y: y.length ? [y[0]] : [],
+      type: "scatter",
+      mode: "markers",
+      marker: {
+        size: 7,
+        color: speedColor(speeds[0], vmin, vmax),
+        line: { width: 1.5, color: "#101318" },
       },
-    ];
+      hoverinfo: "skip",
+      showlegend: false,
+    });
+
+    const othersStart = 2;
+    const dotIndex = traces.length - 1;
     const layout = Object.assign({}, layoutBase, {
       xaxis: Object.assign({ visible: false }, axisStyle),
       yaxis: Object.assign({ visible: false, scaleanchor: "x" }, axisStyle),
@@ -239,12 +304,21 @@
       hovermode: "closest",
     });
     Promise.resolve(Plotly.react(div, traces, layout, config)).then(() => {
+      const inputs = document.getElementById("driver-inputs");
+      if (inputs) inputs.classList.toggle("hidden", !Object.keys(channels).length);
+      updateDriverInputs(channels, 0);
       if (x.length > 1) {
         animation = {
           div,
           x,
           y,
-          traceIndex: traces.length - 1,
+          channels,
+          speeds,
+          others,
+          vmin,
+          vmax,
+          dotIndex,
+          othersIndices: others.map((_, index) => othersStart + index),
           index: 0,
           duration:
             typeof meta.lap_time_s === "number" && meta.lap_time_s > 0 ? meta.lap_time_s : 90,

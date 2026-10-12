@@ -137,20 +137,43 @@ def test_mock_code_passes_the_validator():
     assert validate_source(payload["code"]) == []
 
 
-def test_mock_refuses_steering_data(sandbox_dirs):
+def test_mock_builds_a_steering_input(sandbox_dirs):
+    client = FakeClient()
     result = agent.build_screen(
         "Compare Hamilton steering angles over the laps 8 and 13",
         CONTEXT,
-        client=FakeClient(),
+        client=client,
         llm=llm.LLMClient(),
     )
-    assert result["status"] == "refused"
-    assert "Steering angle is not in the public FastF1 data" in result["message"]
+    assert result["status"] == "built"
+    assert len(client.registered) == 1
+    assert "steering_input" in client.registered[0]["source"]
+
+
+def test_steering_mock_code_passes_the_validator():
+    from server.sandbox.validate import validate_source
+
+    payload = json.loads(
+        llm.mock_generate([{"role": "user", "content": "show the steering wheel input"}])
+    )
+    assert payload["name"] == "steering_input"
+    assert validate_source(payload["code"]) == []
 
 
 def test_mock_refuses_an_unmatched_instruction(sandbox_dirs):
     result = agent.build_screen(
         "Write a poem about Ferrari", CONTEXT, client=FakeClient(), llm=llm.LLMClient()
+    )
+    assert result["status"] == "refused"
+    assert "Mock mode" in result["message"]
+
+
+def test_mock_refuses_custom_metrics(sandbox_dirs):
+    result = agent.build_screen(
+        "Compare drivers full throttle with drops in acceleration, make a graph",
+        CONTEXT,
+        client=FakeClient(),
+        llm=llm.LLMClient(),
     )
     assert result["status"] == "refused"
     assert "Mock mode" in result["message"]
