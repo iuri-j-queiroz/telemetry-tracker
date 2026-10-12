@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from server import normalize
-from server.catalog import driver_color
+from server.catalog import driver_color, list_drivers
 
 CHANNELS = ("Speed", "Throttle", "Brake", "nGear", "RPM", "DRS")
 
@@ -80,13 +80,50 @@ def _channel_values(telemetry: pd.DataFrame, channel: str) -> np.ndarray:
     return telemetry[channel].to_numpy(dtype=float)
 
 
+def _other_positions(session, selected_code: str, times: np.ndarray) -> list[dict]:
+    """Sample the positions of the other drivers at the given session times.
+
+    Used for the race layer of the track map. Coordinates are rounded to
+    whole units to keep the payload small.
+    """
+    pos_data = getattr(session, "pos_data", None)
+    if not pos_data:
+        return []
+    try:
+        drivers = list_drivers(session)
+    except Exception:  # noqa: BLE001 - the extra layer is cosmetic
+        return []
+    others = []
+    for driver in drivers:
+        code = str(driver.get("code", ""))
+        if not code or code == selected_code:
+            continue
+        data = pos_data.get(str(driver.get("number", "")))
+        if data is None or "Time" not in data.columns:
+            continue
+        source_time = normalize.time_seconds(data["Time"])
+        xs = normalize.resample(source_time, np.asarray(data["X"], dtype=float), times)
+        ys = normalize.resample(source_time, np.asarray(data["Y"], dtype=float), times)
+        others.append(
+            {
+                "label": code,
+                "color": str(driver.get("color", "#888888")),
+                "x": normalize.values_list(np.round(xs, 0)),
+                "y": normalize.values_list(np.round(ys, 0)),
+            }
+        )
+    return others
+
+
 def trackmap(
     session, driver: str | None = None, channel: str = "Speed", step_m: float = 5.0
 ) -> dict:
-    """Streamlined track map of the fastest lap.
+    """Streamlined grey track map of the fastest lap.
 
-    Interpolate the full position data onto a fixed distance grid and smooth
-    the line. The values give the speed for the heatmap.
+    The series values give the speed for the driver dot. The meta carries
+    the driver inputs on the same distance grid: Throttle, Brake, and
+    SteeringInput. In a race, meta.others holds the positions of the other
+    drivers at the same times.
     """
     lap = _lap(session, driver)
     frame = lap_telemetry(lap)
@@ -102,7 +139,41 @@ def trackmap(
     y_grid = _smooth(normalize.resample(distance, y, points))
     values_grid = normalize.resample(distance, values, points) if values.size else np.array([])
     finite_values = values_grid[np.isfinite(values_grid)] if values_grid.size else np.array([])
+
+    channels: dict = {}
+    if channel in frame.columns:
+        channels[channel] = normalize.values_list(values_grid)
+    for name in ("Throttle", "Brake"):
+        if name in frame.columns:
+            channels[name] = normalize.values_list(
+                normalize.resample(distance, frame[name].to_numpy(dtype=float), points)
+            )
+    if {"X", "Y"} <= set(frame.columns):
+        steering = np.asarray(normalize.steering_input(frame["X"], frame["Y"]), dtype=float)
+        channels["SteeringInput"] = normalize.values_list(
+            normalize.resample(distance, steering, points)
+        )
+
     lap_time = lap["LapTime"]
+    meta = {
+        "track_length_m": float(distance[finite][-1]),
+        "lap_time_s": float(lap_time.total_seconds()) if pd.notna(lap_time) else None,
+        "step_m": step_m,
+        "channel": channel,
+        "unit": UNITS.get(channel, ""),
+        "driver": str(lap["Driver"]),
+        "lap": int(lap["LapNumber"]),
+        "vmin": float(np.nanmin(finite_values)) if finite_values.size else None,
+        "vmax": float(np.nanmax(finite_values)) if finite_values.size else None,
+        "units": {"Speed": "km/h", "Throttle": "%", "Brake": "%", "SteeringInput": "%"},
+        "channels": channels,
+    }
+    if str(getattr(session, "name", "")) in ("Race", "Sprint"):
+        time_column = "SessionTime" if "SessionTime" in frame.columns else "Time"
+        if time_column in frame.columns:
+            frame_time = normalize.time_seconds(frame[time_column])
+            times = normalize.resample(distance, frame_time, points)
+            meta["others"] = _other_positions(session, str(lap["Driver"]), times)
     return normalize.envelope(
         "trackmap",
         series=[
@@ -114,17 +185,7 @@ def trackmap(
                 "color": driver_color(session, str(lap["Driver"])),
             }
         ],
-        meta={
-            "track_length_m": float(distance[finite][-1]),
-            "lap_time_s": float(lap_time.total_seconds()) if pd.notna(lap_time) else None,
-            "step_m": step_m,
-            "channel": channel,
-            "unit": UNITS.get(channel, ""),
-            "driver": str(lap["Driver"]),
-            "lap": int(lap["LapNumber"]),
-            "vmin": float(np.nanmin(finite_values)) if finite_values.size else None,
-            "vmax": float(np.nanmax(finite_values)) if finite_values.size else None,
-        },
+        meta=meta,
     )
 
 

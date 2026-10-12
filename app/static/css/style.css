@@ -126,6 +126,44 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .ghost-button { background: var(--panel-2); border: 1px solid var(--line); }
 .timeline-panel { margin-top: 12px; }
 
+.trackmap-layout { display: flex; gap: 14px; align-items: stretch; }
+.trackmap-chart { flex: 1 1 auto; min-width: 0; }
+.driver-inputs {
+  flex: 0 0 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+}
+.wheel-reference { flex: none; }
+.wheel-face { width: 110px; height: 110px; transition: transform 90ms linear; }
+.input-bars { display: flex; gap: 16px; }
+.input-column { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.input-bar {
+  width: 26px;
+  height: 150px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  transition: box-shadow 90ms linear;
+}
+.input-bar .fill { width: 100%; height: 0%; transition: height 90ms linear; }
+.input-bar.throttle .fill { background: var(--ok); }
+.input-bar.brake .fill { background: var(--err); }
+.input-bar.throttle.active { box-shadow: 0 0 10px rgba(46, 204, 113, 0.9); }
+.input-bar.brake.active { box-shadow: 0 0 10px rgba(255, 92, 92, 0.9); }
+.input-label { color: var(--muted); font-size: 11px; }
+
+@media (max-width: 900px) {
+  .trackmap-layout { flex-direction: column; }
+  .driver-inputs { flex-direction: row; flex-wrap: wrap; }
+}
+
 .drivers { display: flex; flex-direction: column; gap: 2px; max-height: 260px; overflow-y: auto; margin-top: 8px; }
 .driver {
   display: flex;

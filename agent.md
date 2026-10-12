@@ -209,6 +209,13 @@ Register every change in section 9. Use this format:
 - **Checks**: ruff; pytest (72 tests); live build test: steering input built, the acceleration-drops request refused
 - **Decisions/notes**: Use a real LLM for custom metrics. The user added the steering input estimate (from the X and Y positions) in commit 5595861; the mock, the prompt, the UI, and the tests include it.
 
+### [2026-10-12] server and app — track map driver view
+
+- **Files**: server/analysis.py, app/templates/index.html, app/static/css/style.css, app/static/js/charts.js, tests/test_trackmap.py
+- **Change**: The track stays grey. The driver dot now changes color with its speed. A driver-input panel sits at the right of the map: a steering wheel with a center marking, a green throttle bar, and a red brake bar. The play button moves the dot, the wheel, and the bars together. In a race, the other drivers appear as light grey dots with a ring in their own color, and they move with the playback.
+- **Checks**: ruff; pytest (76 tests); live test: race map with 21 others and four channels, qualifying map without others
+- **Decisions/notes**: Other-driver positions are sampled at the session time of each lap point. Use the SessionTime column, because the lap Time column is lap-relative. The coordinates are rounded to whole units. The colorbar stays for the dot colors. The steering wheel turns 150 degrees for 100 percent input; positive is left.
+
 ### [2026-10-12] builder — registered screen `speed_compare_31158dde`
 - **Files**: server/registry/generated/speed_compare_31158dde.py, server/registry/generated/speed_compare_31158dde.json, builder/screens/speed_compare_31158dde.json
 - **Change**: Built a screen for the instruction: "Compare the speed of VER and HAM at Singapore"

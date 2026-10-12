@@ -26,9 +26,39 @@
         <button id="trackmap-play" class="ghost-button" type="button" disabled>Play</button>
       </div>
       <div id="tab-trackmap" class="tab-page active">
-        <div id="trackmap-title" class="chart-title"></div>
-        <div id="trackmap" class="chart chart-tall">
-          <p class="hint">Select an event and a session.</p>
+        <div class="trackmap-layout">
+          <div class="trackmap-chart">
+            <div id="trackmap-title" class="chart-title"></div>
+            <div id="trackmap" class="chart chart-tall">
+              <p class="hint">Select an event and a session.</p>
+            </div>
+          </div>
+          <div id="driver-inputs" class="driver-inputs hidden">
+            <svg class="wheel-reference" width="120" height="12" viewBox="0 0 120 12">
+              <polygon points="60,12 52,0 68,0" fill="#93a0b0"></polygon>
+            </svg>
+            <div class="wheel-face" id="wheel-face">
+              <svg viewBox="0 0 100 100" width="110" height="110">
+                <circle cx="50" cy="50" r="41" fill="none" stroke="#c8c8c8" stroke-width="11"></circle>
+                <line x1="50" y1="50" x2="50" y2="9" stroke="#e8ecf1" stroke-width="7"></line>
+                <circle cx="50" cy="50" r="11" fill="#c8c8c8"></circle>
+              </svg>
+            </div>
+            <div class="input-bars">
+              <div class="input-column">
+                <div class="input-bar throttle" id="throttle-bar">
+                  <div class="fill" id="throttle-fill"></div>
+                </div>
+                <div class="input-label">THR</div>
+              </div>
+              <div class="input-column">
+                <div class="input-bar brake" id="brake-bar">
+                  <div class="fill" id="brake-fill"></div>
+                </div>
+                <div class="input-label">BRK</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <div id="tab-comparison" class="tab-page">
