@@ -168,6 +168,17 @@ def test_mock_refuses_an_unmatched_instruction(sandbox_dirs):
     assert "Mock mode" in result["message"]
 
 
+def test_mock_refuses_custom_metrics(sandbox_dirs):
+    result = agent.build_screen(
+        "Compare drivers full throttle with drops in acceleration, make a graph",
+        CONTEXT,
+        client=FakeClient(),
+        llm=llm.LLMClient(),
+    )
+    assert result["status"] == "refused"
+    assert "Mock mode" in result["message"]
+
+
 def test_mock_uses_the_channel_from_the_instruction():
     payload = json.loads(
         llm.mock_generate(

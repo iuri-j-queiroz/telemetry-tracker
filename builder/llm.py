@@ -31,6 +31,22 @@ STINT_WORDS = ("stint", "tyre", "tire", "compound", "degradation", "pace")
 
 COMPARE_WORDS = ("compare", "speed", "versus", "vs", "delta", "gap", "difference", "telemetry")
 
+# Derived metrics that the mock cannot build. It refuses instead of substituting.
+UNSUPPORTED_METRICS = (
+    "acceleration",
+    "derivative",
+    "histogram",
+    "distribution",
+    "correlation",
+    "scatter",
+    "average",
+    "mean",
+    "percentile",
+    "prediction",
+    "drops",
+    "drop in",
+)
+
 STEERING_WORDS = ("steering", "steering wheel", "steering input", "steering angle")
 
 # Requests that public FastF1 data cannot answer. Never fake this data.
@@ -304,6 +320,8 @@ def mock_generate(messages: list[dict]) -> str:
                 "sample_params": MOCK_STINT_PARAMS,
             }
         )
+    if _matches_any(text, UNSUPPORTED_METRICS):
+        return json.dumps({"action": "refuse", "reason": MOCK_LIMITATION})
     if _matches_any(text, COMPARE_WORDS):
         params = dict(MOCK_COMPARE_PARAMS)
         params["channel"] = _mock_channel(text)

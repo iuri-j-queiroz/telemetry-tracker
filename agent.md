@@ -202,6 +202,13 @@ Register every change in section 9. Use this format:
 - **Checks**: ruff; pytest (59 tests); live test of all gate endpoints without credentials
 - **Decisions/notes**: The token file is the FastF1 auth file. The callback server copies fastf1 internals (f1auth); the fastf1 version is pinned in uv.lock. ManagedSignalRClient adds a clean stop, because the fastf1 client has none. The live window check runs 15 minutes before a session until 3 hours after it. Capture must be validated during a live weekend with an F1TV subscription; it is not testable now.
 
+### [2026-10-12] builder — the mock refuses derived metrics
+
+- **Files**: builder/llm.py, tests/test_builder.py
+- **Change**: The mock refuses requests for derived metrics, for example acceleration drops or averages. It never substitutes another analysis. The mock builds only three example analyses: a speed compare, a stint pace chart, and a steering input trace.
+- **Checks**: ruff; pytest (72 tests); live build test: steering input built, the acceleration-drops request refused
+- **Decisions/notes**: Use a real LLM for custom metrics. The user added the steering input estimate (from the X and Y positions) in commit 5595861; the mock, the prompt, the UI, and the tests include it.
+
 ### [2026-10-12] builder — registered screen `speed_compare_31158dde`
 - **Files**: server/registry/generated/speed_compare_31158dde.py, server/registry/generated/speed_compare_31158dde.json, builder/screens/speed_compare_31158dde.json
 - **Change**: Built a screen for the instruction: "Compare the speed of VER and HAM at Singapore"
@@ -255,3 +262,9 @@ Register every change in section 9. Use this format:
 - **Change**: Added the steering input method. FastF1 has no steering angle channel. The method estimates the steering wheel input from the X and Y positions. The heading change between two positions gives the curvature of the driven line. A tight curve gives a large input. The values run from -100 (steering to the right) to +100 (steering to the left). Added the route /api/analysis/steering-input. The telemetry and compare routes accept the channel SteeringInput. The app compare form has a "Steering input" channel. The builder mock builds steering screens in place of the old refusal. The builder prompt documents the estimate.
 - **Checks**: ruff check; ruff format --check; pytest (71 tests); live test on the cached Singapore 2026 Qualifying session: the new route, the compare channel, and the mock function through the registry sandbox
 - **Decisions/notes**: X and Y use the unit 1/10 m. The method smooths the positions with a moving average of 5 samples and smooths the curvature with a moving average of 5 samples. The sign follows the track map: positive is a counterclockwise turn (left), negative is a clockwise turn (right). The largest curvature in the lap sets the scale. Each lap uses its own scale, because the data has no absolute steering scale. The value is an estimate, not sensor data.
+
+### [2026-10-12] builder — registered screen `steering_input_77025af7` (function `steering_input_be1284ca`)
+- **Files**: server/registry/generated/steering_input_be1284ca.py, server/registry/generated/steering_input_be1284ca.json, builder/screens/steering_input_77025af7.json
+- **Change**: Built a screen for the instruction: "Compare Hamilton steering input over the laps 8 and 13"
+- **Checks**: AST validation, ruff check, server re-validation, smoke test passed
+- **Decisions/notes**: Screen title: Steering input
